@@ -1,0 +1,25 @@
+{
+  "faqs": [
+    {
+      "q": "Where are your properties located?",
+      "a": "We have 2BHK and 3BHK flats in Zirakpur and Mohali, ready to move."
+    }
+  ],
+  "lead_intro": "Happy to help you find the right flat! A couple of quick questions first.",
+  "qualifying_questions": [
+    {
+      "key": "budget",
+      "question": "What's your budget range (in lakhs)?"
+    },
+    {
+      "key": "timeline",
+      "question": "When are you looking to buy — within 3 months, 6 months, or just exploring?"
+    },
+    {
+      "key": "location",
+      "question": "Which area do you prefer — Zirakpur, Mohali, or either?"
+    }
+  ],
+  "qualification_criteria": "Qualified if budget is at least 40 lakhs AND timeline is within 6 months AND location is Zirakpur, Mohali, or no preference. Otherwise unqualified.",
+  "lead_outro": "Thanks! Our property advisor will call you shortly with matching options."
+}

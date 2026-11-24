@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat</title>
+<style>
+  :root {
+    --brand: #0f766e; --brand-2: #14b8a6; --brand-dark: #115e59;
+    --bg: #eef2f3; --ink: #1c1917; --muted: #78716c;
+    --bubble-bot: #ffffff; --amber-bg: #fffbeb; --amber-bd: #fde68a; --amber-ink: #92400e;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; color: var(--ink);
+         background: linear-gradient(160deg, #d8e5e3 0%, var(--bg) 55%, #e7e1d8 100%);
+         min-height: 100vh; display: flex; justify-content: center; padding: 1.5rem 1rem; }
+  .chat { width: 100%; max-width: 440px; background: #fff; border-radius: 18px;
+          box-shadow: 0 12px 40px rgba(15, 118, 110, .18); display: flex; flex-direction: column;
+          height: min(88vh, 780px); overflow: hidden; }
+
+  header { background: linear-gradient(120deg, var(--brand-dark), var(--brand) 60%, var(--brand-2));
+           color: #fff; padding: .9rem 1.1rem; display: flex; align-items: center; gap: .7rem; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.18);
+            display: flex; align-items: center; justify-content: center; font-weight: 700;
+            font-size: 1.05rem; flex: none; border: 2px solid rgba(255,255,255,.35); }
+  header .who { flex: 1; min-width: 0; }
+  header .who b { display: block; font-size: .98rem; white-space: nowrap; overflow: hidden;
+                  text-overflow: ellipsis; }
+  header .who small { display: flex; align-items: center; gap: .35rem; opacity: .9; font-size: .74rem; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; }
+  #gear { background: none; border: 0; color: #fff; font-size: 1.25rem; cursor: pointer;
+          padding: .2rem .4rem; opacity: .9; }
+  #gear:hover { opacity: 1; }
+
+  #settings { display: none; padding: .9rem 1.1rem; border-bottom: 1px solid #e7e5e4;
+              background: #fafaf9; font-size: .84rem; }
+  #settings.open { display: block; }
+  #settings label { display: block; margin: .5rem 0 .15rem; font-weight: 600; color: #44403c; }
+  #settings select, #settings input[type=password], #settings input[type=text] {
+      width: 100%; padding: .48rem .6rem; border: 1px solid #d6d3d1; border-radius: 8px;
+      font-size: .84rem; background: #fff; }
+  #settings .hint { color: var(--muted); margin-top: .35rem; }
+  #settings .hint a { color: var(--brand); }
+  .checkline { display: flex; align-items: center; gap: .45rem; margin-top: .6rem; }
+  #saveBtn { margin-top: .7rem; background: var(--brand); color: #fff; border: 0; border-radius: 8px;
+             padding: .48rem 1rem; cursor: pointer; font-size: .84rem; }
+  #saved { color: #15803d; margin-left: .5rem; display: none; }
+
+  #log { flex: 1; overflow-y: auto; padding: 1.1rem 1rem; display: flex; flex-direction: column;
+         gap: .65rem; background: #f8fafa; }
+  .row { display: flex; gap: .5rem; align-items: flex-end; animation: pop .22s ease-out; }
+  .row.me { flex-direction: row-reverse; }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .mini { width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex;
+          align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; }
+  .mini.bot { background: var(--brand); color: #fff; }
+  .mini.me  { background: #d6d3d1; color: #44403c; }
+  .stack { max-width: 78%; display: flex; flex-direction: column; gap: .25rem; }
+  .row.me .stack { align-items: flex-end; }
+  .msg { padding: .6rem .85rem; border-radius: 14px; font-size: .92rem; line-height: 1.4;
+         width: fit-content; max-width: 100%; overflow-wrap: break-word; }
+  .row.me .msg { background: linear-gradient(120deg, var(--brand), var(--brand-2));
+                 color: #fff; border-bottom-right-radius: 4px; }
+  .row.bot .msg { background: var(--bubble-bot); border: 1px solid #e7e5e4;
+                  border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .msg.escalated { background: var(--amber-bg); border: 1px solid var(--amber-bd);
+                   color: var(--amber-ink); }
+  .ts { font-size: .66rem; color: #a8a29e; padding: 0 .2rem; }
+
+  details.think { font-size: .76rem; color: var(--muted); max-width: 100%; }
+  details.think summary { cursor: pointer; list-style: none; display: inline-flex;
+      align-items: center; gap: .3rem; color: #0d9488; user-select: none; }
+  details.think summary::-webkit-details-marker { display: none; }
+  details.think summary::before { content: "▸"; transition: transform .15s; font-size: .7rem; }
+  details.think[open] summary::before { transform: rotate(90deg); }
+  details.think .body { margin-top: .3rem; background: #f0fdfa; border: 1px dashed #99f6e4;
+      border-radius: 8px; padding: .45rem .6rem; color: #134e4a; font-style: italic; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .15rem; }
+  .chip { background: #fff; border: 1px solid var(--brand-2); color: var(--brand-dark);
+          border-radius: 99px; padding: .32rem .75rem; font-size: .8rem; cursor: pointer;
+          transition: background .15s; }
+  .chip:hover { background: #ccfbf1; }
+
+  .typing { display: inline-flex; align-items: center; gap: .5rem; }
+  .dots { display: inline-flex; gap: 3px; }
+  .dots span { width: 6px; height: 6px; border-radius: 50%; background: #99a3a2;
+               animation: bounce 1.1s infinite; }
+  .dots span:nth-child(2) { animation-delay: .18s; }
+  .dots span:nth-child(3) { animation-delay: .36s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: none; opacity: .5; }
+                      30% { transform: translateY(-4px); opacity: 1; } }
+  .status { font-size: .8rem; color: var(--muted); font-style: italic; }
+
+  form.chatform { display: flex; gap: .5rem; padding: .8rem; border-top: 1px solid #e7e5e4;
+                  background: #fff; }
+  form.chatform input { flex: 1; padding: .65rem .9rem; border: 1px solid #d6d3d1;
+      border-radius: 12px; font-size: .95rem; outline: none; }
+  form.chatform input:focus { border-color: var(--brand-2); box-shadow: 0 0 0 3px #ccfbf155; }
+  form.chatform button { background: linear-gradient(120deg, var(--brand), var(--brand-2));
+      color: #fff; border: 0; border-radius: 12px; padding: 0 1.15rem; font-size: 1.05rem;
+      cursor: pointer; }
+  form.chatform button:disabled { opacity: .5; }
+</style>
+</head>
+<body>
+<div class="chat">
+  <header>
+    <div class="avatar" id="bizAvatar">💬</div>
+    <div class="who">
+      <b id="bizName">Chat</b>
+      <small><span class="dot"></span> <span id="presence">AI assistant online</span></small>
+    </div>
+    <button id="gear" title="LLM settings">&#9881;</button>
+  </header>
+
+  <div id="settings">
+    <label for="provider">LLM provider</label>
+    <select id="provider">
+      <option value="gemini">Google Gemini — free tier</option>
+      <option value="groq">Groq — free tier, fast</option>
+      <option value="xai">xAI Grok</option>
+      <option value="anthropic">Anthropic Claude</option>
+    </select>
+    <label for="apiKey">API key</label>
+    <input id="apiKey" type="password" placeholder="paste your key here" autocomplete="off">
+    <label for="model">Model (optional — leave blank for default)</label>
+    <input id="model" type="text" placeholder="e.g. gemini-3.7-flash">
+    <div class="hint" id="providerHint"></div>
+    <div class="checkline">
+      <input type="checkbox" id="showThink" checked>
+      <label for="showThink" style="margin:0; font-weight:400">Show AI reasoning under replies</label>
+    </div>
+    <button id="saveBtn">Save</button><span id="saved">saved ✓</span>
+  </div>
+
+  <div id="log"></div>
+
+  <form id="f" class="chatform">
+    <input id="text" type="text" placeholder="Type a message..." autocomplete="off" required>
+    <button id="send" type="submit" title="Send">&#10148;</button>
+  </form>
+</div>
+
+<script>
+const CLIENT_ID = parseInt(new URLSearchParams(location.search).get("client") || "1", 10);
+const senderId = "web-" + Math.random().toString(36).slice(2, 10);
+const log = document.getElementById("log");
+const form = document.getElementById("f");
+const input = document.getElementById("text");
+const sendBtn = document.getElementById("send");
+const settingsEl = document.getElementById("settings");
+const providerEl = document.getElementById("provider");
+const apiKeyEl = document.getElementById("apiKey");
+const modelEl = document.getElementById("model");
+const hintEl = document.getElementById("providerHint");
+const showThinkEl = document.getElementById("showThink");
+
+const HINTS = {
+  gemini: 'Free key: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — default model gemini-3.7-flash',
+  groq: 'Free key: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> — default model openai/gpt-oss-120b',
+  xai: 'Key: <a href="https://console.x.ai" target="_blank">console.x.ai</a> (needs credits) — default model grok-4.3',
+  anthropic: 'Key: <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> — default model claude-opus-5',
+};
+const THINKING_STEPS = [
+  "Thinking…",
+  "Reading the business facts…",
+  "Checking if I can answer this confidently…",
+  "Drafting a reply in the right tone…",
+];
+
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem("llm_settings")) || {}; } catch { return {}; }
+}
+function showThinking() {
+  const s = loadSettings();
+  return s.show_thinking !== false;
+}
+function applySettingsToForm() {
+  const s = loadSettings();
+  providerEl.value = s.provider || "gemini";
+  apiKeyEl.value = s.api_key || "";
+  modelEl.value = s.model || "";
+  showThinkEl.checked = showThinking();
+  hintEl.innerHTML = HINTS[providerEl.value];
+}
+providerEl.addEventListener("change", () => { hintEl.innerHTML = HINTS[providerEl.value]; });
+document.getElementById("gear").addEventListener("click", () => settingsEl.classList.toggle("open"));
+document.getElementById("saveBtn").addEventListener("click", () => {
+  localStorage.setItem("llm_settings", JSON.stringify({
+    provider: providerEl.value,
+    api_key: apiKeyEl.value.trim(),
+    model: modelEl.value.trim(),
+    show_thinking: showThinkEl.checked,
+  }));
+  const saved = document.getElementById("saved");
+  saved.style.display = "inline";
+  setTimeout(() => { saved.style.display = "none"; settingsEl.classList.remove("open"); }, 800);
+});
+applySettingsToForm();
+
+function now() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+function clearChips() {
+  document.querySelectorAll(".chips").forEach(el => el.remove());
+}
+function scrollDown() { log.scrollTop = log.scrollHeight; }
+
+function addRow(side, avatarText) {
+  const row = document.createElement("div");
+  row.className = "row " + side;
+  const mini = document.createElement("div");
+  mini.className = "mini " + side;
+  mini.textContent = avatarText;
+  const stack = document.createElement("div");
+  stack.className = "stack";
+  row.append(mini, stack);
+  log.appendChild(row);
+  return stack;
+}
+
+function addMe(text) {
+  clearChips();
+  const stack = addRow("me", "You");
+  const b = document.createElement("div");
+  b.className = "msg";
+  b.textContent = text;
+  const ts = document.createElement("div");
+  ts.className = "ts";
+  ts.textContent = now();
+  stack.append(b, ts);
+  scrollDown();
+}
+
+function thinkBlock(reason, label) {
+  const d = document.createElement("details");
+  d.className = "think";
+  d.innerHTML = `<summary>${label}</summary>`;
+  const body = document.createElement("div");
+  body.className = "body";
+  body.textContent = reason;
+  d.appendChild(body);
+  return d;
+}
+
+function addBot(text, { reason = null, escalated = false, suggestions = [], module = null } = {}) {
+  clearChips();
+  const stack = addRow("bot", "AI");
+  const b = document.createElement("div");
+  b.className = "msg" + (escalated ? " escalated" : "");
+  b.textContent = text;
+  stack.appendChild(b);
+  if (reason && showThinking()) {
+    const label = escalated ? "why the AI escalated this"
+      : (module === "lead_qualifier" ? "what the AI is doing" : "AI reasoning");
+    stack.appendChild(thinkBlock(reason, label));
+  }
+  const ts = document.createElement("div");
+  ts.className = "ts";
+  ts.textContent = now();
+  stack.appendChild(ts);
+  if (suggestions.length) addChips(suggestions);
+  scrollDown();
+}
+
+function addChips(suggestions) {
+  const wrap = document.createElement("div");
+  wrap.className = "chips";
+  wrap.style.marginLeft = "2.1rem";
+  for (const s of suggestions) {
+    const chip = document.createElement("button");
+    chip.className = "chip";
+    chip.textContent = s;
+    chip.addEventListener("click", () => sendMessage(s));
+    wrap.appendChild(chip);
+  }
+  log.appendChild(wrap);
+  scrollDown();
+}
+
+let typingRow = null, typingTimer = null;
+function showTyping() {
+  const stack = addRow("bot", "AI");
+  typingRow = stack.parentElement;
+  const b = document.createElement("div");
+  b.className = "msg typing";
+  b.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>' +
+                '<span class="status" id="thinkStatus">' + THINKING_STEPS[0] + "</span>";
+  stack.appendChild(b);
+  let i = 1;
+  typingTimer = setInterval(() => {
+    const el = document.getElementById("thinkStatus");
+    if (el) el.textContent = THINKING_STEPS[i++ % THINKING_STEPS.length];
+  }, 1400);
+  scrollDown();
+}
+function hideTyping() {
+  clearInterval(typingTimer);
+  if (typingRow) typingRow.remove();
+  typingRow = null;
+}
+
+async function sendMessage(text) {
+  addMe(text);
+  sendBtn.disabled = true;
+  showTyping();
+  const s = loadSettings();
+  const body = { client_id: CLIENT_ID, channel: "widget", sender_id: senderId, text };
+  if (s.api_key) body.llm = { provider: s.provider || "gemini", api_key: s.api_key, model: s.model || null };
+  try {
+    const res = await fetch("/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    hideTyping();
+    if (!res.ok) {
+      addBot("Error: " + (data.detail || res.status), { escalated: true });
+    } else if (data.escalated) {
+      addBot("I've passed this to our team — someone will get back to you shortly. 🙏",
+             { reason: data.reason, escalated: true });
+    } else if (data.reply) {
+      addBot(data.reply, { reason: data.reason, suggestions: data.suggestions || [], module: data.module });
+    }
+  } catch (err) {
+    hideTyping();
+    addBot("Network error: " + err.message, { escalated: true });
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  sendMessage(text);
+});
+
+// --- init ---
+fetch("/clients").then(r => r.json()).then(clients => {
+  const me = clients.find(c => c.id === CLIENT_ID);
+  if (me) {
+    document.getElementById("bizName").textContent = me.business_name;
+    document.getElementById("bizAvatar").textContent = me.business_name.trim()[0].toUpperCase();
+    document.title = me.business_name;
+  }
+});
+addBot("Hi! How can we help you today?");
+fetch(`/clients/${CLIENT_ID}/starters`).then(r => r.json()).then(d => {
+  if (d.starters && d.starters.length) addChips(d.starters);
+});
+if (!loadSettings().api_key) {
+  addBot("No API key set — click the ⚙ icon to pick a free provider (Gemini/Groq) and paste a key.",
+         { escalated: true });
+  settingsEl.classList.add("open");
+}
+</script>
+</body>
+</html>

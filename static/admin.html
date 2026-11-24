@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agency Admin</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; color: #18181b; }
+  header { background: #18181b; color: #fff; padding: 1rem 1.5rem; display: flex;
+           justify-content: space-between; align-items: center; }
+  header h1 { font-size: 1.1rem; margin: 0; }
+  header a { color: #a1a1aa; font-size: .85rem; text-decoration: none; }
+  main { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; display: grid; gap: 1.25rem; }
+  section { background: #fff; border-radius: 10px; padding: 1rem 1.25rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h2 { font-size: .95rem; margin: 0 0 .75rem; color: #3f3f46; text-transform: uppercase;
+       letter-spacing: .04em; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid #f1f1f2; vertical-align: top; }
+  th { color: #71717a; font-weight: 600; }
+  .chip { display: inline-block; background: #e0f2f1; color: #0f766e; border-radius: 99px;
+          padding: .1rem .55rem; font-size: .75rem; margin: 0 .15rem .15rem 0; }
+  .status-escalated { color: #b91c1c; font-weight: 600; }
+  .status-qualified { color: #15803d; font-weight: 600; }
+  .status-unqualified { color: #a16207; }
+  button { background: #0f766e; color: #fff; border: 0; border-radius: 6px;
+           padding: .35rem .75rem; font-size: .82rem; cursor: pointer; }
+  button.ghost { background: #f4f4f5; color: #18181b; border: 1px solid #d4d4d8; }
+  pre { background: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px; padding: .75rem;
+        font-size: .82rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+  .msgline { margin: .15rem 0; }
+  .msgline b { color: #0f766e; }
+  .muted { color: #a1a1aa; font-size: .85rem; }
+  input[type=file] { font-size: .85rem; }
+  .row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agency Admin</h1>
+  <a href="/widget/" target="_blank">open chat widget &rarr;</a>
+</header>
+<main>
+  <section>
+    <h2>Clients</h2>
+    <table id="clientsTable"><thead><tr>
+      <th>ID</th><th>Business</th><th>Industry</th><th>Modules</th><th>Actions</th>
+    </tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>Escalated — needs your attention</h2>
+    <div id="escalated" class="muted">Loading…</div>
+  </section>
+
+  <section>
+    <h2>Leads</h2>
+    <div class="row">
+      <label for="leadClient">Client:</label>
+      <select id="leadClient"></select>
+      <button class="ghost" onclick="loadLeads()">Refresh</button>
+    </div>
+    <div id="leads" class="muted" style="margin-top:.6rem">Pick a client.</div>
+  </section>
+
+  <section>
+    <h2>Conversation log</h2>
+    <div class="row">
+      <label for="convoClient">Client:</label>
+      <select id="convoClient"></select>
+      <button class="ghost" onclick="loadConvos()">Load</button>
+    </div>
+    <div id="convos" style="margin-top:.6rem"></div>
+  </section>
+
+  <section>
+    <h2>Data cleanup (Module 3)</h2>
+    <form id="cleanupForm" class="row">
+      <input type="file" id="cleanupFile" accept=".csv,.xlsx,.pdf" required>
+      <button type="submit">Clean &amp; download</button>
+    </form>
+    <div id="cleanupReport" class="muted" style="margin-top:.5rem"></div>
+  </section>
+
+  <section>
+    <h2>Knowledge base (Stage 8 — RAG grounding)</h2>
+    <div class="row">
+      <label for="kbClient">Client:</label>
+      <select id="kbClient"></select>
+      <button class="ghost" onclick="loadKb()">Refresh</button>
+    </div>
+    <form id="kbUploadForm" class="row" style="margin-top:.6rem">
+      <input type="file" id="kbFile" accept=".txt,.md,.csv,.pdf" required>
+      <button type="submit">Upload &amp; index</button>
+    </form>
+    <div id="kbUploadStatus" class="muted" style="margin-top:.4rem"></div>
+    <div id="kbSources" style="margin-top:.7rem"></div>
+
+    <div class="row" style="margin-top:1rem; border-top:1px solid #f1f1f2; padding-top:.8rem">
+      <label for="kbQuery">Test retrieval:</label>
+      <input type="text" id="kbQuery" placeholder="ask a question…" style="flex:1; min-width:200px;
+             padding:.35rem .6rem; border:1px solid #d4d4d8; border-radius:6px; font-size:.85rem">
+      <button class="ghost" onclick="searchKb()">Search</button>
+    </div>
+    <div id="kbSearchResults" style="margin-top:.5rem"></div>
+  </section>
+
+  <section>
+    <h2>Reports (Module 4)</h2>
+    <div class="row">
+      <label for="reportClient">Client:</label>
+      <select id="reportClient"></select>
+      <button onclick="runReport()">Generate now</button>
+    </div>
+    <pre id="reportOut" style="display:none"></pre>
+  </section>
+</main>
+<script>
+function llmSettings() {
+  try { return JSON.parse(localStorage.getItem("llm_settings")) || {}; } catch { return {}; }
+}
+function llmBody() {
+  const s = llmSettings();
+  return s.api_key ? { provider: s.provider || "gemini", api_key: s.api_key, model: s.model || null } : null;
+}
+
+let CLIENTS = [];
+async function loadClients() {
+  CLIENTS = await (await fetch("/clients")).json();
+  const tbody = document.querySelector("#clientsTable tbody");
+  tbody.innerHTML = "";
+  for (const c of CLIENTS) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${c.id}</td><td>${c.business_name}</td><td>${c.industry || "—"}</td>
+      <td>${(c.active_modules || []).map(m => `<span class="chip">${m}</span>`).join("")}</td>
+      <td><a href="/widget/?client=${c.id}" target="_blank">widget</a></td>`;
+    tbody.appendChild(tr);
+  }
+  for (const id of ["leadClient", "convoClient", "reportClient", "kbClient"]) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = CLIENTS.map(c => `<option value="${c.id}">${c.id} — ${c.business_name}</option>`).join("");
+  }
+}
+
+function renderMessages(messages) {
+  return (messages || []).map(m =>
+    `<div class="msgline"><b>${m.role}:</b> ${escapeHtml(m.text)}</div>`).join("");
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+async function loadEscalated() {
+  const items = await (await fetch("/admin/escalated")).json();
+  const el = document.getElementById("escalated");
+  if (!items.length) { el.textContent = "Nothing escalated. 🎉"; return; }
+  el.innerHTML = items.map(i => `
+    <div style="border-bottom:1px solid #f1f1f2; padding:.5rem 0">
+      <div class="row">
+        <span class="status-escalated">#${i.conversation_id}</span>
+        <b>${escapeHtml(i.business_name)}</b>
+        <span class="muted">${i.channel} / ${escapeHtml(i.sender_id)}</span>
+        <button class="ghost" onclick="resolveConvo(${i.conversation_id})">Mark resolved</button>
+      </div>
+      ${renderMessages(i.messages)}
+    </div>`).join("");
+}
+async function resolveConvo(id) {
+  await fetch(`/admin/conversations/${id}/resolve`, { method: "POST" });
+  loadEscalated();
+}
+
+async function loadLeads() {
+  const id = document.getElementById("leadClient").value;
+  const leads = await (await fetch(`/clients/${id}/leads`)).json();
+  const el = document.getElementById("leads");
+  if (!leads.length) { el.textContent = "No leads yet for this client."; return; }
+  el.innerHTML = `<table><thead><tr><th>#</th><th>Status</th><th>Answers</th><th>Reason</th><th>When</th></tr></thead><tbody>` +
+    leads.map(l => `<tr>
+      <td>${l.conversation_id}</td>
+      <td class="status-${l.lead_status}">${l.lead_status}</td>
+      <td>${Object.entries(l.answers).map(([k,v]) => `<b>${escapeHtml(k)}</b>: ${escapeHtml(v)}`).join("<br>")}</td>
+      <td>${escapeHtml(l.reason || "—")}</td>
+      <td class="muted">${(l.created_at || "").slice(0, 16).replace("T", " ")}</td>
+    </tr>`).join("") + "</tbody></table>";
+}
+
+async function loadConvos() {
+  const id = document.getElementById("convoClient").value;
+  const convos = await (await fetch(`/clients/${id}/conversations`)).json();
+  const el = document.getElementById("convos");
+  if (!convos.length) { el.innerHTML = '<span class="muted">No conversations yet.</span>'; return; }
+  el.innerHTML = convos.map(c => `
+    <div style="border-bottom:1px solid #f1f1f2; padding:.5rem 0">
+      <div><b>#${c.id}</b> <span class="muted">${c.channel} / ${escapeHtml(c.sender_id)}</span>
+        — <span class="status-${c.status}">${c.status}</span></div>
+      ${renderMessages(c.messages)}
+    </div>`).join("");
+}
+
+document.getElementById("cleanupForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = document.getElementById("cleanupFile").files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("file", file);
+  const s = llmSettings();
+  if (s.api_key) { fd.append("provider", s.provider || "gemini"); fd.append("api_key", s.api_key);
+                   if (s.model) fd.append("model", s.model); }
+  const res = await fetch("/cleanup", { method: "POST", body: fd });
+  const reportEl = document.getElementById("cleanupReport");
+  if (!res.ok) { reportEl.textContent = "Error: " + (await res.text()); return; }
+  const report = JSON.parse(res.headers.get("X-Cleanup-Report") || "{}");
+  reportEl.textContent = `Rows in: ${report.rows_in}, out: ${report.rows_out}, ` +
+    `duplicates removed: ${report.duplicates_removed}, dates fixed: ${report.dates_normalized}, ` +
+    `phones fixed: ${report.phones_normalized} (columns via ${report.classified_by})`;
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (file.name.replace(/\.[^.]+$/, "") || "cleaned") + "_cleaned.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+async function loadKb() {
+  const id = document.getElementById("kbClient").value;
+  const data = await (await fetch(`/clients/${id}/knowledge`)).json();
+  const el = document.getElementById("kbSources");
+  if (!data.sources.length) { el.innerHTML = '<span class="muted">No documents uploaded yet.</span>'; return; }
+  el.innerHTML = `<table><thead><tr><th>Document</th><th>Chunks</th><th></th></tr></thead><tbody>` +
+    data.sources.map(s => `<tr>
+      <td>${escapeHtml(s.source)}</td>
+      <td>${s.chunks}</td>
+      <td><button class="ghost" onclick="deleteKbSource('${escapeHtml(s.source)}')">Remove</button></td>
+    </tr>`).join("") + "</tbody></table>";
+}
+
+document.getElementById("kbUploadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("kbClient").value;
+  const file = document.getElementById("kbFile").files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("file", file);
+  const statusEl = document.getElementById("kbUploadStatus");
+  statusEl.textContent = "Uploading & indexing…";
+  const res = await fetch(`/clients/${id}/knowledge`, { method: "POST", body: fd });
+  const data = await res.json();
+  if (!res.ok) { statusEl.textContent = "Error: " + (data.detail || res.status); return; }
+  statusEl.textContent = `Indexed ${data.filename} — ${data.chunks_added} chunks added.`;
+  document.getElementById("kbFile").value = "";
+  loadKb();
+});
+
+async function deleteKbSource(source) {
+  const id = document.getElementById("kbClient").value;
+  await fetch(`/clients/${id}/knowledge/${encodeURIComponent(source)}`, { method: "DELETE" });
+  loadKb();
+}
+
+async function searchKb() {
+  const id = document.getElementById("kbClient").value;
+  const q = document.getElementById("kbQuery").value.trim();
+  const el = document.getElementById("kbSearchResults");
+  if (!q) return;
+  el.innerHTML = '<span class="muted">Searching…</span>';
+  const data = await (await fetch(`/clients/${id}/knowledge/search?q=${encodeURIComponent(q)}`)).json();
+  if (!data.results.length) {
+    el.innerHTML = '<span class="muted">No relevant chunks — this question would be escalated (low confidence).</span>';
+    return;
+  }
+  el.innerHTML = data.results.map(r => `
+    <div style="border:1px solid #e7e5e4; border-radius:8px; padding:.5rem .7rem; margin-bottom:.4rem">
+      <div class="row"><b>${escapeHtml(r.source)}</b><span class="muted">score ${r.score}</span></div>
+      <div style="font-size:.85rem; margin-top:.25rem">${escapeHtml(r.text)}</div>
+    </div>`).join("");
+}
+
+async function runReport() {
+  const id = document.getElementById("reportClient").value;
+  const out = document.getElementById("reportOut");
+  out.style.display = "block";
+  out.textContent = "Generating…";
+  const res = await fetch(`/clients/${id}/report`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(llmBody()),
+  });
+  const data = await res.json();
+  out.textContent = res.ok ? data.report : ("Error: " + JSON.stringify(data));
+}
+
+loadClients().then(() => { loadEscalated(); });
+</script>
+</body>
+</html>

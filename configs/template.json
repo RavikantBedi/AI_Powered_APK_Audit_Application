@@ -1,0 +1,28 @@
+{
+  "_instructions": "Onboarding template — copy to client_<id>.json after POST /clients. Delete keys you don't need. Target: under 30 minutes per client.",
+  "faqs": [
+    {"q": "Example question a customer asks?", "a": "The exact answer the agent should give."}
+  ],
+  "services": ["Service 1", "Service 2"],
+  "pricing": {"Service 1": "Rs. 500"},
+  "hours": "Mon-Sat 10am-8pm",
+  "extra_facts": ["Location, experience, anything else the agent may state"],
+
+  "never_say": [
+    "No discount promises",
+    "No refund guarantees",
+    "No medical advice",
+    "No legal claims",
+    "Never say 'lifetime warranty'"
+  ],
+
+  "lead_intro": "(lead_qualifier module) Greeting before the first qualifying question.",
+  "qualifying_questions": [
+    {"key": "budget", "question": "What's your budget?"},
+    {"key": "timeline", "question": "When do you need this?"}
+  ],
+  "qualification_criteria": "(lead_qualifier) Plain-English rule the LLM applies to the answers.",
+  "lead_outro": "(lead_qualifier) Message after the last answer.",
+
+  "report_schedule": {"day_of_week": "mon", "hour": 9}
+}

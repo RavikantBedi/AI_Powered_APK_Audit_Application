@@ -1,0 +1,46 @@
+{
+  "faqs": [
+    {
+      "q": "What are your opening hours?",
+      "a": "Mon-Sat 9:30am-7pm, closed Sundays."
+    },
+    {
+      "q": "Do you do teeth whitening?",
+      "a": "Yes — in-clinic whitening, single session, results same day."
+    },
+    {
+      "q": "How much does a general checkup cost?",
+      "a": "Rs. 500, which includes a consultation with Dr. Sharma."
+    },
+    {
+      "q": "Do you accept insurance?",
+      "a": "We accept all major cashless insurance for procedures above Rs. 5,000."
+    },
+    {
+      "q": "How do I book an appointment?",
+      "a": "Reply here with your preferred day and time, or call 98765-43210."
+    }
+  ],
+  "services": [
+    "General checkup",
+    "Teeth whitening",
+    "Root canal",
+    "Braces & aligners",
+    "Extractions"
+  ],
+  "pricing": {
+    "General checkup": "Rs. 500",
+    "Teeth whitening": "Rs. 6,000",
+    "Root canal": "Rs. 4,500 - 8,000 depending on tooth"
+  },
+  "hours": "Mon-Sat 9:30am-7pm, closed Sundays",
+  "extra_facts": [
+    "Located in Sector 17, Chandigarh",
+    "Dr. Sharma has 15 years of experience"
+  ],
+  "never_say": [
+    "No discount promises",
+    "No refund guarantees",
+    "No medical advice"
+  ]
+}

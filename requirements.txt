@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+anthropic
+pydantic
+python-dotenv
+pytest
+httpx
+pandas
+openpyxl
+pypdf
+python-multipart
+apscheduler
+python-dateutil
+numpy
